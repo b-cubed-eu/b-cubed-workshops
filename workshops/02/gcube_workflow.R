@@ -7,4 +7,6 @@ if (install) {
 }
 
 # Load packages
-library(gcube)
+library(gcube)     # simulate biodiversity data cubes
+library(sf)        # work with spatial objects
+library(tidyverse) # data wrangling and visualisation

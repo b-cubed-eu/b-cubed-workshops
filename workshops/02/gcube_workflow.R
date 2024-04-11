@@ -181,16 +181,15 @@ ggplot() +
 
 # Now that we know how the helper functions work, we can generate occurrence
 # points within the polygon using the simulate_occurrences() function.
-# We can for example sample over 10 time points were we use a random walk over
+# We can for example sample over 8 time points were we use a random walk over
 # time with an initial average number of occurrences equal to 100
-
 occurrences_df <- simulate_occurrences(
   plgn = polygon,
   initial_average_abundance = 100,
-  n_time_points = 10,
+  n_time_points = 8,
   temporal_function = simulate_random_walk,
   sd_step = 1,
-  spatial_autocorr = "clustered",
+  spatial_autocorr = "random",
   seed = 123)
 
 # This is the number of occurrences we have for each time point
@@ -207,6 +206,68 @@ ggplot() +
   geom_sf(data = occurrences_df) +
   facet_wrap(~time_point, nrow = 2) +
   ggtitle("Distribution of occurrences for each time point") +
+  theme_minimal()
+
+
+### Detection process
+
+# We have our occurrences, but not all occurrences are generally observed.
+# The detection of occurrences depends on the detection probability of a species
+# and the sampling bias (includes both sampling bias and effort). This process
+# can be simulated using the sample_observations() function.
+?sample_observations
+
+# Each observation will have a detection probability value (=the same for all
+# observations) and a bias weight depending on its spatial distribution. The
+# combination of detection probability and bias weight results in a sampling
+# probability which is used to decide whether each occurrence is detected or not
+# using (rbinom(1, 1, sampling_probability)).
+
+# For bias there are 3 options: "no_bias", "polygon" or "manual".
+# 1. With "no_bias", only the detection probability value will decide whether
+# an occurrence is observed or not.
+# 2. With "polygon", bias weights depend on their location inside or outside a
+# given polygon with a certain bias strength. We can visualise this using the
+# helper function apply_polygon_sampling_bias()
+?apply_polygon_sampling_bias
+
+# Lets say we have a road across our polygon
+# Define the road width
+road_width <- 50
+
+# Create road points
+road_points <- rbind(c(100, 500), c(1000, 500))
+
+# Create road-like polygon within the given polygon
+road_polygon <- st_linestring(road_points) %>%
+  st_buffer(road_width) %>%
+  st_intersection(polygon) %>%
+  st_polygon() %>%
+  st_sfc() %>%
+  st_as_sf() %>%
+  rename(geometry = x)
+
+# Plot the result
+ggplot() +
+  geom_sf(data = polygon, fill = "darkgreen") +
+  geom_sf(data = road_polygon) +
+  theme_minimal()
+
+# We can say that occurrences on or close to the road have 2x larger probability
+# to be detected
+occurrence_bias_df <- apply_polygon_sampling_bias(
+  occurrences_df,
+  bias_area = road_polygon,
+  bias_strength = 2)
+
+ggplot() +
+  geom_sf(data = polygon, fill = "darkgreen") +
+  geom_sf(data = road_polygon) +
+  geom_sf(data = occurrence_bias_df,
+          aes(colour = factor(round(bias_weight, 3)))) +
+  facet_wrap(~time_point, nrow = 2) +
+  labs(title = "Distribution of occurrences for each time point",
+       colour = "bias_weight") +
   theme_minimal()
 
 

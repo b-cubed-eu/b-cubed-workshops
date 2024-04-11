@@ -400,6 +400,7 @@ ggplot() +
 point_df <- tibble(
   x = 200,
   y = 500,
+  time_point = 1,
   coordinateUncertaintyInMeters = 25) %>%
   st_as_sf(coords = c("x", "y"))
 
@@ -478,34 +479,38 @@ ggExtra::ggMarginal(scatter_normal, type = "histogram")
 
 # Create occurrence cube for time point 1
 occurrence_cube_df <- grid_designation(
-  observations_df %>% dplyr::filter(time_point == 1),
+  observations_df,
   cube_grid,
   seed = 123)
 
 # Get sampled points within uncertainty circle by setting aggregate = FALSE
 sampled_points <- grid_designation(
-  observations_df %>% dplyr::filter(time_point == 1),
+  observations_df,
   cube_grid,
   seed = 123,
   aggregate = FALSE)
 
-# Lets visualise were the samples were taken
+# Lets visualise were the samples were taken for time point 1
 ggplot() +
   geom_sf(data = polygon) +
-  geom_sf(data = occurrence_cube_df, alpha = 0) +
-  geom_sf_text(data = occurrence_cube_df, aes(label = n)) +
+  geom_sf(data = occurrence_cube_df %>% dplyr::filter(time_point == 1),
+          alpha = 0) +
+  geom_sf_text(data = occurrence_cube_df %>% dplyr::filter(time_point == 1),
+               aes(label = n)) +
   geom_sf(data = buffered_observations %>% dplyr::filter(time_point == 1),
           fill = alpha("firebrick", 0.3)) +
-  geom_sf(data = sampled_points, colour = "blue") +
+  geom_sf(data = sampled_points %>% dplyr::filter(time_point == 1),
+          colour = "blue") +
   geom_sf(data = observations_df %>% dplyr::filter(time_point == 1),
           colour = "firebrick") +
   theme_minimal()
 
-# Visualise minimal coordinate uncertainty
+# Visualise minimal coordinate uncertainty for time points 1 and 2
 ggplot() +
   geom_sf(data = polygon) +
-  geom_sf(data = occurrence_cube_df, aes(fill = min_coord_uncertainty),
-          alpha = 0.3) +
-  geom_sf_text(data = occurrence_cube_df, aes(label = n)) +
-  scale_fill_continuous(type = "viridis") +
+  geom_sf(data = occurrence_cube_df %>% dplyr::filter(time_point %in% 1:2),
+          aes(fill = min_coord_uncertainty), alpha = 0.5) +
+  geom_sf_text(data = occurrence_cube_df %>% dplyr::filter(time_point %in% 1:2),
+               aes(label = n)) +
+  facet_wrap(~time_point) +
   theme_minimal()

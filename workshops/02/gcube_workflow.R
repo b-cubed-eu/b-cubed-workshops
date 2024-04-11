@@ -181,12 +181,12 @@ ggplot() +
 
 # Now that we know how the helper functions work, we can generate occurrence
 # points within the polygon using the simulate_occurrences() function.
-# We can for example sample over 8 time points were we use a random walk over
+# We can for example sample over 6 time points were we use a random walk over
 # time with an initial average number of occurrences equal to 100
 occurrences_df <- simulate_occurrences(
   plgn = polygon,
   initial_average_abundance = 100,
-  n_time_points = 8,
+  n_time_points = 6,
   temporal_function = simulate_random_walk,
   sd_step = 1,
   spatial_autocorr = "random",
@@ -249,7 +249,7 @@ road_polygon <- st_linestring(road_points) %>%
 
 # Plot the result
 ggplot() +
-  geom_sf(data = polygon, fill = "darkgreen") +
+  geom_sf(data = polygon, fill = "lightgreen") +
   geom_sf(data = road_polygon) +
   theme_minimal()
 
@@ -261,7 +261,7 @@ occurrence_bias_df1 <- apply_polygon_sampling_bias(
   bias_strength = 2)
 
 ggplot() +
-  geom_sf(data = polygon, fill = "darkgreen") +
+  geom_sf(data = polygon, fill = "lightgreen") +
   geom_sf(data = road_polygon) +
   geom_sf(data = occurrence_bias_df1,
           aes(colour = factor(round(bias_weight, 3)))) +
@@ -305,4 +305,29 @@ ggplot() +
   geom_sf(data = occurrence_bias_df2,
           aes(colour = bias_weight)) +
   geom_sf_text(data = grid, aes(label = round(bias_weight, 2))) +
+  theme_minimal()
+
+# Now that we know how the helper functions work, we can simulate the detection
+# process using the sample_observations() function.
+# We can for example state that our species has a 0.9 detection probability and
+# this time we say there is a very small chance to detect it close to the road
+
+detections_df_raw <- sample_observations(
+  occurrences_df,
+  detection_probability = 0.9,
+  sampling_bias = "polygon",
+  bias_area = road_polygon,
+  bias_strength = 0.1,
+  seed = 123)
+
+# We see that a lot of occurrences are detected due to the high detection
+# probability, but this is not the case on the road where few are detected.
+ggplot() +
+  geom_sf(data = polygon, fill = "lightgreen") +
+  geom_sf(data = road_polygon) +
+  geom_sf(data = detections_df_raw,
+          aes(colour = sampling_status)) +
+  scale_colour_manual(values = c("blue", "red")) +
+  facet_wrap(~time_point, nrow = 2) +
+  labs(title = "Distribution of occurrences for each time point") +
   theme_minimal()

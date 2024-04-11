@@ -471,3 +471,41 @@ ggExtra::ggMarginal(scatter_uniform, type = "histogram")
 # uncertainty circle. This should be 0.05 (1 - p_norm) %.
 # They won't be used for grid designation.
 ggExtra::ggMarginal(scatter_normal, type = "histogram")
+
+
+# Now we know how to use the randomisation in grid_designation()
+# By default we use uniform randomisation
+
+# Create occurrence cube for time point 1
+occurrence_cube_df <- grid_designation(
+  observations_df %>% dplyr::filter(time_point == 1),
+  cube_grid,
+  seed = 123)
+
+# Get sampled points within uncertainty circle by setting aggregate = FALSE
+sampled_points <- grid_designation(
+  observations_df %>% dplyr::filter(time_point == 1),
+  cube_grid,
+  seed = 123,
+  aggregate = FALSE)
+
+# Lets visualise were the samples were taken
+ggplot() +
+  geom_sf(data = polygon) +
+  geom_sf(data = occurrence_cube_df, alpha = 0) +
+  geom_sf_text(data = occurrence_cube_df, aes(label = n)) +
+  geom_sf(data = buffered_observations %>% dplyr::filter(time_point == 1),
+          fill = alpha("firebrick", 0.3)) +
+  geom_sf(data = sampled_points, colour = "blue") +
+  geom_sf(data = observations_df %>% dplyr::filter(time_point == 1),
+          colour = "firebrick") +
+  theme_minimal()
+
+# Visualise minimal coordinate uncertainty
+ggplot() +
+  geom_sf(data = polygon) +
+  geom_sf(data = occurrence_cube_df, aes(fill = min_coord_uncertainty),
+          alpha = 0.3) +
+  geom_sf_text(data = occurrence_cube_df, aes(label = n)) +
+  scale_fill_continuous(type = "viridis") +
+  theme_minimal()

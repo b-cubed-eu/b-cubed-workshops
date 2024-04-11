@@ -255,7 +255,7 @@ ggplot() +
 
 # We can say that occurrences on or close to the road have 2x larger probability
 # to be detected
-occurrence_bias_df <- apply_polygon_sampling_bias(
+occurrence_bias_df1 <- apply_polygon_sampling_bias(
   occurrences_df,
   bias_area = road_polygon,
   bias_strength = 2)
@@ -263,11 +263,46 @@ occurrence_bias_df <- apply_polygon_sampling_bias(
 ggplot() +
   geom_sf(data = polygon, fill = "darkgreen") +
   geom_sf(data = road_polygon) +
-  geom_sf(data = occurrence_bias_df,
+  geom_sf(data = occurrence_bias_df1,
           aes(colour = factor(round(bias_weight, 3)))) +
   facet_wrap(~time_point, nrow = 2) +
   labs(title = "Distribution of occurrences for each time point",
        colour = "bias_weight") +
   theme_minimal()
 
+# 3. With "manual", bias weights depend on their location inside grid cells
+# of a given grid where each cell has its own value.
+# We can visualise this using the helper function apply_manual_sampling_bias()
+?apply_manual_sampling_bias
 
+# Lets create a grid and give random bias weights to each cell
+grid <- st_make_grid(
+    polygon,
+    n = c(10, 10),
+    square = TRUE) %>%
+  st_sf()
+set.seed(123)
+grid$bias_weight <- runif(nrow(grid), min = 0, max = 1)
+
+# Plot the grid
+ggplot() +
+  geom_sf(data = polygon) +
+  geom_sf(data = grid, alpha = 0) +
+  geom_sf_text(data = grid, aes(label = round(bias_weight, 2))) +
+  theme_minimal()
+
+
+# We use the helper function. We only use time point 1
+occurrence_bias_df2 <- apply_manual_sampling_bias(
+  occurrences_df %>% dplyr::filter(time_point == 1),
+  bias_weights = grid)
+
+# We indeed see higher bias weights for occurrences where with higher values in
+# The grid cells
+ggplot() +
+  geom_sf(data = polygon) +
+  geom_sf(data = grid, alpha = 0) +
+  geom_sf(data = occurrence_bias_df2,
+          aes(colour = bias_weight)) +
+  geom_sf_text(data = grid, aes(label = round(bias_weight, 2))) +
+  theme_minimal()

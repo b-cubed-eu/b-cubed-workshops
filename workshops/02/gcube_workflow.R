@@ -347,3 +347,25 @@ detections_df <- detections_df_raw %>%
 observations_df <- add_coordinate_uncertainty(
   observations = detections_df,
   coords_uncertainty_meters = 25)
+
+# Created and sf object with uncertainty circles to visualise
+buffered_observations <- st_buffer(
+  observations_df,
+  observations_df$coordinateUncertaintyInMeters)
+
+ggplot() +
+  geom_sf(data = polygon, fill = "lightgreen") +
+  geom_sf(data = road_polygon) +
+  geom_sf(data = buffered_observations,
+          fill = alpha("firebrick", 0.3)) +
+  geom_sf(data = observations_df, colour = "firebrick", size = 0.8) +
+  facet_wrap(~time_point, nrow = 2) +
+  labs(title = "Distribution of occurrences for each time point") +
+  theme_minimal()
+
+
+### Grid designation process
+
+
+
+

@@ -3,7 +3,7 @@
 # Install package if necessary
 install <- FALSE
 if (install) {
-  install.packages("remotes")
+  #install.packages("remotes")
   remotes::install_github("b-cubed-eu/gcube")
 }
 
@@ -11,6 +11,7 @@ if (install) {
 library(gcube)     # simulate biodiversity data cubes
 library(sf)        # work with spatial objects
 library(tidyverse) # data wrangling and visualisation
+library(tidyterra) # visualisation spatraster objects
 
 ### Input
 
@@ -27,13 +28,13 @@ ggplot() +
 
 # We generate occurrence points within the polygon using the
 # simulate_occurrences() function.
-?simulate_occurrences()
+?simulate_occurrences
 
 # Say we want to have 100 occurrences in our plot over 10 years
 # You can change the spatial clustering and the trend over time
 # We visualise this with the helper functions used in simulate_occurrences()
 # The number of occurrences are always drawn from a Poisson distribution
-?simulate_timeseries()
+?simulate_timeseries
 
 # 1) If we do not specify a temporal function we draw from a Poisson
 # distribution for each time point
@@ -114,3 +115,98 @@ tibble(
   geom_point() +
   geom_smooth(method = "lm", formula = "y ~ x", se = FALSE) +
   theme_minimal()
+
+# We can also choose the amount of spatial clustering
+?create_spatial_pattern
+
+# There are defaults for random and clustered patterns, but you can also choose
+# a value yourself
+
+# 1) Lets look at the default where we have no clustering
+rs_pattern_random <- create_spatial_pattern(
+  polygon = polygon,
+  resolution = 10,
+  spatial_pattern = "random",
+  seed = 123)
+
+# We see values of high sampling probability randomly distributed
+ggplot() +
+  geom_spatraster(data = rs_pattern_random) +
+  scale_fill_continuous(type = "viridis") +
+  theme_minimal()
+
+# 2) Lets look at the default where we have clustering
+rs_pattern_clustered <- create_spatial_pattern(
+  polygon = polygon,
+  resolution = 10,
+  spatial_pattern = "clustered",
+  seed = 123)
+
+# We see values of high sampling probability clustered together
+ggplot() +
+  geom_spatraster(data = rs_pattern_clustered) +
+  scale_fill_continuous(type = "viridis") +
+  theme_minimal()
+
+# 3) Lets change the clustering ourselves
+rs_pattern_clustered2 <- create_spatial_pattern(
+  polygon = polygon,
+  resolution = 10,
+  spatial_pattern = 100,
+  seed = 123)
+
+# We see values of high sampling probability in fewer, larger clusters
+ggplot() +
+  geom_spatraster(data = rs_pattern_clustered2) +
+  scale_fill_continuous(type = "viridis") +
+  theme_minimal()
+
+
+# We sample from this pattern using a different helper function
+?sample_occurrences_from_raster
+
+# If we for example sample 500 occurrences from the last raster, we see
+# the sampling is according to the expected pattern
+pts_occ_clustered2 <- sample_occurrences_from_raster(
+  rs = rs_pattern_clustered2,
+  ts = 500,
+  seed = 123)
+
+ggplot() +
+  geom_spatraster(data = rs_pattern_clustered2) +
+  geom_sf(data = pts_occ_clustered2) +
+  scale_fill_continuous(type = "viridis") +
+  theme_minimal()
+
+
+# Now that we know how the helper functions work, we can generate occurrence
+# points within the polygon using the simulate_occurrences() function.
+# We can for example sample over 10 time points were we use a random walk over
+# time with an initial average number of occurrences equal to 100
+
+occurrences_df <- simulate_occurrences(
+  plgn = polygon,
+  initial_average_abundance = 100,
+  n_time_points = 10,
+  temporal_function = simulate_random_walk,
+  sd_step = 1,
+  spatial_autocorr = "clustered",
+  seed = 123)
+
+# This is the number of occurrences we have for each time point
+occurrences_df %>%
+  st_drop_geometry() %>%
+  count(time_point) %>%
+  ggplot(aes(x =  time_point, y = n)) +
+    geom_point() +
+    theme_minimal()
+
+# This spatial distribution of the occurrences for each time point
+ggplot() +
+  geom_sf(data = polygon) +
+  geom_sf(data = occurrences_df) +
+  facet_wrap(~time_point, nrow = 2) +
+  ggtitle("Distribution of occurrences for each time point") +
+  theme_minimal()
+
+

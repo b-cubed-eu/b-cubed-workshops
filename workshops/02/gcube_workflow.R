@@ -366,6 +366,108 @@ ggplot() +
 
 ### Grid designation process
 
+# Now we can make a data cube from our observations while taking into account
+# the uncertainty. We can create the grid using the grid_designation() function.
+?grid_designation
+
+# We also need a grid. Each observation will be designated to a grid cell.
+cube_grid <- st_make_grid(
+  st_buffer(polygon, 25),
+  n = c(20, 20),
+  square = TRUE) %>%
+  st_sf()
+
+ggplot() +
+  geom_sf(data = polygon) +
+  geom_sf(data = cube_grid, alpha = 0) +
+  theme_minimal()
+
+# How does grid designation take coordinate uncertainty into account?
+# The default is "uniform" randomisation where a random point within the
+# uncertainty circle is taken as the location of the observation. This point is
+# then designated to the overlapping grid cell.
+# Another option is "normal" where a point is sampled from a bivariate Normal
+# distribution with means equal to the observation point and the variance equal
+# to (-coordinateUncertaintyInMeters^2) / (2 * log(1 - p_norm)) such that
+# p_norm % of all possible samples from this Normal distribution fall within
+# the uncertainty circle. This can be visualised by using these helper functions
+?sample_from_uniform_circle
+?sample_from_binormal_circle
+
+# Lets create a random point with 25 meter coordinate uncertainty.
+# We sample 1000 times using uniform and normal randomisation to look at the
+# difference between the methods.
+point_df <- tibble(
+  x = 200,
+  y = 500,
+  coordinateUncertaintyInMeters = 25) %>%
+  st_as_sf(coords = c("x", "y"))
+
+n_sim <- 1000
+
+# Take 1000 samples with uniform randomisation
+list_samples_uniform <- vector("list", length = n_sim)
+for (i in seq_len(n_sim)) {
+  sampled_point_uniform <- sample_from_uniform_circle(point_df)
+  sampled_point_uniform$sim <- i
+  list_samples_uniform[[i]] <- sampled_point_uniform
+}
+samples_uniform_df <- do.call(rbind.data.frame, list_samples_uniform)
+
+# Take 1000 samples with normal randomisation
+list_samples_normal <- vector("list", length = n_sim)
+for (i in seq_len(n_sim)) {
+  sampled_point_normal <- sample_from_binormal_circle(point_df, p_norm = 0.95)
+  sampled_point_normal$sim <- i
+  list_samples_normal[[i]] <- sampled_point_normal
+}
+samples_normal_df <- do.call(rbind.data.frame, list_samples_normal)
 
 
+# Visualise the samples
+coordinates_uniform_df <- data.frame(st_coordinates(samples_uniform_df))
+coordinates_normal_df <- data.frame(st_coordinates(samples_normal_df))
+coordinates_point_df <- data.frame(st_coordinates(point_df))
 
+scatter_uniform <- ggplot() +
+  geom_point(data = coordinates_uniform_df,
+             aes(x = X, y = Y),
+             colour = "cornflowerblue") +
+  geom_segment(data = coordinates_point_df,
+               aes(x = X, xend = X + 25,
+                   y = Y, yend = Y),
+               linewidth = 1.5, colour = "darkgreen") +
+  geom_label(aes(y = 503, x = 212.5, label = "25 m"), colour = "black",
+            size = 5) +
+  geom_point(data = coordinates_point_df,
+             aes(x = X, y = Y),
+             color = "firebrick", size = 2) +
+  coord_fixed() +
+  theme_minimal()
+
+scatter_normal <- ggplot() +
+  geom_point(data = coordinates_normal_df,
+             aes(x = X, y = Y),
+             colour = "cornflowerblue") +
+  geom_segment(data = coordinates_point_df,
+               aes(x = X, xend = X + 25,
+                   y = Y, yend = Y),
+               linewidth = 1.5, colour = "darkgreen") +
+  geom_label(aes(y = 503, x = 212.5, label = "25 m"), colour = "black",
+             size = 5) +
+  stat_ellipse(data = coordinates_normal_df,
+               aes(x = X, y = Y), level = 0.975, linewidth = 1.5, color = "firebrick") +
+  geom_point(data = coordinates_point_df,
+             aes(x = X, y = Y),
+             color = "firebrick", size = 2) +
+  coord_fixed() +
+  theme_minimal()
+
+# In the case of uniform randomisation, we see samples everywhere within the
+# uncertainty circle.
+ggExtra::ggMarginal(scatter_uniform, type = "histogram")
+
+# In the case of normal randomisation, we see some samples outside the
+# uncertainty circle. This should be 0.05 (1 - p_norm) %.
+# They won't be used for grid designation.
+ggExtra::ggMarginal(scatter_normal, type = "histogram")

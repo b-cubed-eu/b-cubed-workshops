@@ -24,6 +24,7 @@ ggplot() +
   geom_sf(data = polygon) +
   theme_minimal()
 
+
 ### Occurrence process
 
 # We generate occurrence points within the polygon using the
@@ -311,7 +312,6 @@ ggplot() +
 # process using the sample_observations() function.
 # We can for example state that our species has a 0.9 detection probability and
 # this time we say there is a very small chance to detect it close to the road
-
 detections_df_raw <- sample_observations(
   occurrences_df,
   detection_probability = 0.9,
@@ -331,3 +331,19 @@ ggplot() +
   facet_wrap(~time_point, nrow = 2) +
   labs(title = "Distribution of occurrences for each time point") +
   theme_minimal()
+
+
+# We only keep the detected occurrences
+detections_df <- detections_df_raw %>%
+  dplyr::filter(sampling_status == "detected")
+
+# We add coordinate uncertainty to the observations.
+# This can be done using the add_coordinate_uncertainty() function.
+?add_coordinate_uncertainty
+
+# You can add a value for all observations or a vector with a single value for
+# each observation.
+# Lets add 25 meters of uncertainty to each observation
+observations_df <- add_coordinate_uncertainty(
+  observations = detections_df,
+  coords_uncertainty_meters = 25)

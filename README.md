@@ -10,3 +10,4 @@ Number | Title | Lead
 [Workshop 2](workshops/02) | Unveiling Ecological Dynamics Through Simulation and Visualization of Biodiversity Data Cubes | Ward Langeraert
 [Workshop 3](https://github.com/EBVcube/ebv-workshop2024) | EBVCube | EBV Data Portal team
 [Workshop 4](https://github.com/b-cubed-eu/b-cubed-workshops/tree/main/workshops/04) | How to Package YouR Functions: From Standalone to R Packages | Damiano Oldoni 
+[Workshop 5](https://github.com/wlangera/targets-workshop-2025) | The {targets} pipeline tool for R | Ward Langeraert
